@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabaseServer";
+import { GMAIL_SCOPE, googleConfig, oauthState } from "@/lib/gmail";
+export async function GET(request:Request){try{const supabase=await createClient();const {data:{user}}=await supabase!.auth.getUser();if(!user)return NextResponse.json({error:"Unauthorized"},{status:401});const subject=new URL(request.url).searchParams.get("subject")?.trim();if(!subject)return NextResponse.json({error:"Enter the exact Gmail subject first."},{status:400});const config=googleConfig();const params=new URLSearchParams({client_id:config.clientId,redirect_uri:config.redirectUri,response_type:"code",scope:GMAIL_SCOPE,access_type:"offline",prompt:"consent",include_granted_scopes:"true",state:oauthState(user.id,subject)});return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Could not start Gmail connection."},{status:500})}}
+
