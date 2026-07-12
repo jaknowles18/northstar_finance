@@ -19,12 +19,15 @@ export async function POST(){
         const message=await gmailFetch(token,`/messages/${item.id}?format=full`);
         const subject=(message.payload?.headers??[]).find((h:any)=>h.name?.toLowerCase()==="subject")?.value?.trim();
         if(subject!==connection.subject_filter)continue; matched++;
-        const [parsed]=parseRbcEmail(messageText(message.payload));
-        let {data:rule}=await supabase!.from("merchant_rules").select("category_id").eq("match_text",parsed.rawMerchant).maybeSingle();
-        if(!rule){const fallback=await supabase!.from("merchant_rules").select("category_id").eq("normalized_name",parsed.normalizedMerchant).limit(1).maybeSingle();rule=fallback.data}
-        const emailHash=crypto.createHash("sha256").update(`gmail:${item.id}`).digest("hex");
-        const {error:insertError}=await supabase!.from("transactions").insert({user_id:user.id,transaction_date:parsed.transactionDate,posted_at:new Date(Number(message.internalDate)).toISOString(),amount:parsed.amount,currency:parsed.currency,raw_merchant:parsed.rawMerchant,normalized_merchant:parsed.normalizedMerchant,category_id:rule?.category_id??null,source:"gmail_rbc",email_hash:emailHash,confidence:parsed.confidence});
-        if(insertError?.code==="23505")duplicates++;else if(insertError)throw insertError;else imported++;
+        const parsedTransactions=parseRbcEmail(messageText(message.payload));
+        for(const [index,parsed] of parsedTransactions.entries()){
+          let {data:rule}=await supabase!.from("merchant_rules").select("category_id").eq("match_text",parsed.rawMerchant).maybeSingle();
+          if(!rule){const fallback=await supabase!.from("merchant_rules").select("category_id").eq("normalized_name",parsed.normalizedMerchant).limit(1).maybeSingle();rule=fallback.data}
+          const fingerprint=[item.id,index,parsed.transactionDate,parsed.amount,parsed.currency,parsed.rawMerchant].join(":");
+          const emailHash=crypto.createHash("sha256").update(`gmail:${fingerprint}`).digest("hex");
+          const {error:insertError}=await supabase!.from("transactions").insert({user_id:user.id,transaction_date:parsed.transactionDate,posted_at:new Date(Number(message.internalDate)).toISOString(),amount:parsed.amount,currency:parsed.currency,raw_merchant:parsed.rawMerchant,normalized_merchant:parsed.normalizedMerchant,category_id:rule?.category_id??null,source:"gmail_rbc",email_hash:emailHash,confidence:parsed.confidence});
+          if(insertError?.code==="23505")duplicates++;else if(insertError)throw insertError;else imported++;
+        }
         await gmailFetch(token,`/messages/${item.id}/modify`,{method:"POST",body:JSON.stringify({removeLabelIds:["UNREAD"]})});
       }catch{failed++}
     }

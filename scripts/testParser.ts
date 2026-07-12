@@ -13,3 +13,27 @@ for (const testCase of cases) {
   assert.equal(result.amount, testCase.amount);
 }
 console.log(`${cases.length} RBC parser cases passed.`);
+
+const forwarded = `Here are the forwarded alerts:
+
+---------- Forwarded message ---------
+Purchase Amount:
+CAD $42.16
+Transaction Description:
+TIM HORTONS 1234
+Transaction Date:
+July 10, 2026
+
+---------- Forwarded message ---------
+> Purchase Amount:
+> $84.26
+> Transaction Description:
+> LOBLAWS #1024
+> Transaction Date:
+> July 11, 2026`;
+
+const forwardedResults = parseRbcEmail(forwarded);
+assert.equal(forwardedResults.length, 2);
+assert.deepEqual(forwardedResults.map((result) => result.normalizedMerchant), ["Tim Hortons", "Loblaws"]);
+assert.deepEqual(forwardedResults.map((result) => result.amount), [42.16, 84.26]);
+console.log("Multi-forwarded RBC parser case passed.");
