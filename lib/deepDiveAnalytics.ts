@@ -2,7 +2,31 @@ import type { BillingSettings, DeepDiveFilters, Transaction } from "./types";
 const date=(v:string)=>new Date(`${v}T12:00:00`); const iso=(v:Date)=>`${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,"0")}-${String(v.getDate()).padStart(2,"0")}`;
 export function getDateRangeFromPreset(preset:string,billing?:BillingSettings|null){const now=new Date();let start=new Date(now),end=new Date(now);if(preset==="last7")start.setDate(now.getDate()-6);else if(preset==="last30")start.setDate(now.getDate()-29);else if(preset==="month")start=new Date(now.getFullYear(),now.getMonth(),1);else if(preset==="lastMonth"){start=new Date(now.getFullYear(),now.getMonth()-1,1);end=new Date(now.getFullYear(),now.getMonth(),0)}else if(preset==="3months")start=new Date(now.getFullYear(),now.getMonth()-2,1);else if(preset==="6months")start=new Date(now.getFullYear(),now.getMonth()-5,1);else if(preset==="year")start=new Date(now.getFullYear(),0,1);else if(preset==="billing"&&billing)return{startDate:billing.billingPeriodStartDate,endDate:billing.billingPeriodEndDate};return{startDate:iso(start),endDate:iso(end)}}
 export function getPreviousComparableRange(startDate:string,endDate:string){const start=date(startDate),end=date(endDate),days=Math.round((end.getTime()-start.getTime())/86400000)+1;const previousEnd=new Date(start);previousEnd.setDate(start.getDate()-1);const previousStart=new Date(previousEnd);previousStart.setDate(previousEnd.getDate()-days+1);return{startDate:iso(previousStart),endDate:iso(previousEnd)}}
-export function filterTransactions(items:Transaction[],f:DeepDiveFilters){const merchants=new Map<string,number>();items.forEach(t=>merchants.set(t.normalizedMerchant,(merchants.get(t.normalizedMerchant)??0)+1));const filtered=items.filter(t=>{const d=t.transactionDate?date(t.transactionDate):null;return!!d&&(!f.startDate||t.transactionDate!<f.startDate)&&(!f.endDate||t.transactionDate!>f.endDate)&&(!f.categoryIds.length||!!t.categoryId&&f.categoryIds.includes(t.categoryId))&&(!f.merchantIds.length||f.merchantIds.includes(t.normalizedMerchant))&&(f.minAmount===null||t.amount>=f.minAmount)&&(f.maxAmount===null||t.amount<=f.maxAmount)&&(!f.searchText||`${t.normalizedMerchant} ${t.rawMerchant} ${t.notes??""}`.toLowerCase().includes(f.searchText.toLowerCase()))&&(!f.source||t.transactionSource===f.source)&&(!f.uncategorizedOnly||!t.categoryId)&&(!f.recurringOnly||(merchants.get(t.normalizedMerchant)??0)>=2)&&(!f.weekdays.length||f.weekdays.includes(d.getDay()))&&(f.month===null||d.getMonth()===f.month)});return filtered.sort((a,b)=>f.sortBy==="oldest"?(a.transactionDate??"").localeCompare(b.transactionDate??""):f.sortBy==="amountHigh"?b.amount-a.amount:f.sortBy==="amountLow"?a.amount-b.amount:f.sortBy==="merchant"?a.normalizedMerchant.localeCompare(b.normalizedMerchant):f.sortBy==="category"?(a.category??"ZZZ").localeCompare(b.category??"ZZZ"):(b.transactionDate??"").localeCompare(a.transactionDate??""))}
+export function filterTransactions(items: Transaction[], filters: DeepDiveFilters) {
+  const merchantCounts = new Map<string, number>();
+  items.forEach((transaction) => merchantCounts.set(transaction.normalizedMerchant, (merchantCounts.get(transaction.normalizedMerchant) ?? 0) + 1));
+  const categoryIds = filters.categoryIds ?? [], merchantIds = filters.merchantIds ?? [], weekdays = filters.weekdays ?? [];
+  const search = (filters.searchText ?? "").trim().toLowerCase();
+  const filtered = items.filter((transaction) => {
+    if (!transaction.transactionDate) return false;
+    const transactionDate = date(transaction.transactionDate);
+    if (Number.isNaN(transactionDate.getTime())) return false;
+    if (filters.startDate && transaction.transactionDate < filters.startDate) return false;
+    if (filters.endDate && transaction.transactionDate > filters.endDate) return false;
+    if (categoryIds.length && (!transaction.categoryId || !categoryIds.includes(transaction.categoryId))) return false;
+    if (merchantIds.length && !merchantIds.includes(transaction.normalizedMerchant)) return false;
+    if (filters.minAmount != null && transaction.amount < filters.minAmount) return false;
+    if (filters.maxAmount != null && transaction.amount > filters.maxAmount) return false;
+    if (search && !`${transaction.normalizedMerchant} ${transaction.rawMerchant} ${transaction.notes ?? ""}`.toLowerCase().includes(search)) return false;
+    if (filters.source && transaction.transactionSource !== filters.source) return false;
+    if (filters.uncategorizedOnly && transaction.categoryId) return false;
+    if (filters.recurringOnly && (merchantCounts.get(transaction.normalizedMerchant) ?? 0) < 2) return false;
+    if (weekdays.length && !weekdays.includes(transactionDate.getDay())) return false;
+    if (typeof filters.month === "number" && transactionDate.getMonth() !== filters.month) return false;
+    return true;
+  });
+  return filtered.sort((a,b)=>filters.sortBy==="oldest"?(a.transactionDate??"").localeCompare(b.transactionDate??""):filters.sortBy==="amountHigh"?b.amount-a.amount:filters.sortBy==="amountLow"?a.amount-b.amount:filters.sortBy==="merchant"?a.normalizedMerchant.localeCompare(b.normalizedMerchant):filters.sortBy==="category"?(a.category??"ZZZ").localeCompare(b.category??"ZZZ"):(b.transactionDate??"").localeCompare(a.transactionDate??""));
+}
 export const getTotalSpend=(t:Transaction[])=>t.reduce((s,x)=>s+x.amount,0); export const getAverageTransaction=(t:Transaction[])=>t.length?getTotalSpend(t)/t.length:0;
 export function getAverageDailySpend(t:Transaction[],start:string,end:string){const days=Math.floor((date(end).getTime()-date(start).getTime())/86400000)+1;return days>0?getTotalSpend(t)/days:0}
 const grouped=(t:Transaction[],key:(x:Transaction)=>string)=>[...t.reduce((m,x)=>m.set(key(x),(m.get(key(x))??0)+x.amount),new Map<string,number>())].map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
