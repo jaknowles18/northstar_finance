@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 export const metadata: Metadata = {
   title: "Northstar — Spending Analyzer",
   description: "Private, clear spending insights from your RBC notifications.",
+  icons: { icon: "/icon.svg", shortcut: "/icon.svg" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -14,4 +15,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-
