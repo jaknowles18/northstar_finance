@@ -3,8 +3,8 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "Northstar — Spending Analyzer",
-  description: "Private, clear spending insights from your RBC notifications.",
+  title: { default: "Northstar — Private Spending Clarity", template: "%s — Northstar" },
+  description: "Understand spending patterns, review categories, and import RBC purchase alerts in a private personal ledger.",
   icons: { icon: "/icon.svg", shortcut: "/icon.svg" },
 };
 

@@ -1,2 +1,6 @@
+import { PageHeader } from "@/components/ProductUI";
 import { ImportEmailBox } from "@/components/ImportEmailBox";
-export default function ImportPage() { return <div className="page"><div className="eyebrow">Secure bulk import</div><h1 className="page-title">Bring in your RBC purchases.</h1><p className="subtitle">Paste one notification or a batch of forwarded emails. Review every recognized transaction, then save the entire batch at once.</p><ImportEmailBox/></div> }
+
+export default function ImportPage() {
+  return <div className="page"><PageHeader eyebrow="Manual import" title="Bring in RBC purchases." description="Paste one alert or a batch of forwarded emails, review the recognized purchases, then save them together." /><ImportEmailBox /></div>;
+}

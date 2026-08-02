@@ -12,6 +12,7 @@ export type Transaction = ParsedTransaction & {
   id: string;
   category: string | null;
   categoryId?: string | null;
+  originalAmount?: number | null;
   notes?: string | null;
   transactionSource?: string;
 };
@@ -28,4 +29,3 @@ export type DeepDiveFilters = {
   searchText: string; source: string; uncategorizedOnly: boolean; recurringOnly: boolean;
   weekdays: number[]; month: number | null; sortBy: string;
 };
-

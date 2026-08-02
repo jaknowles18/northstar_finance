@@ -23,7 +23,8 @@ create table public.merchant_rules (
 );
 create table public.transactions (
   id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
-  transaction_date date, posted_at timestamptz, amount numeric(12,2) not null check (amount >= 0), currency text not null default 'CAD',
+  transaction_date date, posted_at timestamptz, amount numeric(12,2) not null check (amount >= 0),
+  original_amount numeric(12,2) check (original_amount >= 0), currency text not null default 'CAD',
   raw_merchant text not null, normalized_merchant text not null, merchant_id uuid references public.merchants(id) on delete set null,
   category_id uuid references public.categories(id) on delete set null, source text not null default 'rbc_email', email_hash text,
   confidence numeric(3,2) check (confidence between 0 and 1), notes text, created_at timestamptz not null default now()
@@ -40,4 +41,3 @@ create table public.imports (
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin insert into public.profiles(id, email) values(new.id, new.email); return new; end; $$;
 create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();
-
